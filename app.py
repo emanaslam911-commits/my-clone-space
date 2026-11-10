@@ -11,7 +11,7 @@ def generate_rag_response(message, history):
     
     # Specific intent matching for identity, education, skills & projects
     if any(k in query for k in ["name", "who are you", "who r u", "yourself"]):
-        return "Hi! I am Eman Aslam, an AI developer pursuing a degree in Software Engineering / Computer Science."
+        return "Hi! I am Aima, an AI developer pursuing a degree in Software Engineering / Computer Science."
     elif any(k in query for k in ["degree", "study", "semester", "education"]):
         return "I am currently pursuing a Bachelor of Science degree in Software Engineering / Computer Science."
     elif any(k in query for k in ["tech stack", "skills", "programming", "languages"]):
@@ -21,7 +21,7 @@ def generate_rag_response(message, history):
     elif any(k in query for k in ["experience", "work", "job"]):
         return "I have hands-on experience in import/export operations management, deep learning research (deepfake detection, NLP classification), and e-commerce analytics."
     else:
-        return f"I am Eman Aslam's AI Digital Clone. You asked: '{message}'. Feel free to ask about my name, academic background, tech stack, or projects!"
+        return f"I am Aima's AI Digital Clone. You asked: '{message}'. Feel free to ask about my name, academic background, tech stack, or projects!"
 
 # --- 2. Gradio User Interface ---
 with gr.Blocks() as demo:
