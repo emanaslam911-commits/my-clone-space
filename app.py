@@ -7,23 +7,21 @@ if os.path.exists("embeddings.npy"):
     embeddings = np.load("embeddings.npy")
 
 def generate_rag_response(message, history):
-    """
-    RAG Logic / Persona Knowledge Base for your Digital Clone.
-    This handles user queries based on your professional profile.
-    """
     query = message.lower()
     
-    # Matching keywords to provide relevant personal/professional answers
-    if "degree" in query or "study" in query or "semester" in query:
-        return "I am currently pursuing a Bachelor of Science degree in Software Engineering / Computer Science, studying in my final stages."
-    elif "tech stack" in query or "skills" in query or "programming" in query:
-        return "My core tech stack includes Python, C++, NumPy, pandas, TensorFlow, PyTorch, Flask, Streamlit, SQLite, Git, and VS Code."
-    elif "project" in query or "final year" in query:
-        return "My Final Year Project is titled 'Smart Multimodal Recognition System for the Visually Impaired' (Blind Assistance AI / DeepFake-Guard), focusing on advanced deep learning models like EfficientNet-B4."
-    elif "experience" in query or "work" in query:
-        return "I have hands-on experience managing import and export operations, digital marketing analysis, and conducting deep learning research for computer vision and NLP pipelines (like toxic comment classification and deepfake detection)."
+    # Specific intent matching for identity, education, skills & projects
+    if any(k in query for k in ["name", "who are you", "who r u", "yourself"]):
+        return "Hi! I am Eman Aslam, an AI developer pursuing a degree in Software Engineering / Computer Science."
+    elif any(k in query for k in ["degree", "study", "semester", "education"]):
+        return "I am currently pursuing a Bachelor of Science degree in Software Engineering / Computer Science."
+    elif any(k in query for k in ["tech stack", "skills", "programming", "languages"]):
+        return "My tech stack includes Python, C++, NumPy, pandas, TensorFlow, PyTorch, Flask, Streamlit, SQLite, Git, and VS Code."
+    elif any(k in query for k in ["project", "final year", "fyp"]):
+        return "My Final Year Project is titled 'Smart Multimodal Recognition System for the Visually Impaired' (DeepFake-Guard / Blind Assistance AI)."
+    elif any(k in query for k in ["experience", "work", "job"]):
+        return "I have hands-on experience in import/export operations management, deep learning research (deepfake detection, NLP classification), and e-commerce analytics."
     else:
-        return f"Hello! I am your AI Digital Clone. You asked: '{message}'. Feel free to ask about my academic profile, technical skills, projects, or professional background!"
+        return f"I am Eman Aslam's AI Digital Clone. You asked: '{message}'. Feel free to ask about my name, academic background, tech stack, or projects!"
 
 # --- 2. Gradio User Interface ---
 with gr.Blocks() as demo:
@@ -33,7 +31,7 @@ with gr.Blocks() as demo:
     gr.ChatInterface(
         fn=generate_rag_response,
         title="Digital Clone Assistant",
-        description="Ask me anything about my academic profile, projects, or professional background!"
+        description="Ask me anything about my identity, academic profile, projects, or professional background!"
     )
 
 # --- 3. Railway Port Binding & Server Launch ---
