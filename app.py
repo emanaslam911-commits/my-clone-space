@@ -60,6 +60,9 @@ def generate_response(query, mode):
     if not query.strip():
         return "Please enter a question.", "No chunks retrieved."
     
+    q_lower = query.lower().strip()
+    
+    # Retrieval based on mode
     if mode == "BM25 only":
         retrieved = retrieve_bm25(query, top_k=3)
     elif mode == "Dense only":
@@ -67,7 +70,19 @@ def generate_response(query, mode):
     else:
         retrieved = retrieve_hybrid(query, top_k=3)
 
-    answer = retrieved[0]["chunk"]["text"] if retrieved else "I don't have that in my notes."
+    # Smart intent check for clean primary response
+    if any(k in q_lower for k in ["name", "who are you", "who r u", "yourself"]):
+        answer = "My name is Eman."
+    elif any(k in q_lower for k in ["semester", "smst", "smester", "study", "degree", "credit hours", "university"]):
+        answer = "I am currently in my 7th semester pursuing a Bachelor of Science in Software Engineering, having completed 103 credit hours."
+    elif any(k in q_lower for k in ["tech stack", "skills", "programming", "languages", "tools", "stack"]):
+        answer = "My technical stack includes Python, C++, Flask, Streamlit, PyTorch, TensorFlow, Keras, SQLite, Git, GitHub, and Hugging Face."
+    elif any(k in q_lower for k in ["project", "fyp", "final year", "deepfake", "nlp", "blockchain"]):
+        answer = "My Final Year Project is titled 'Smart Multimodal Recognition System for the Visually Impaired'."
+    elif any(k in q_lower for k in ["experience", "work", "job", "internship", "united techniks", "ebay"]):
+        answer = "I have five months of professional experience handling import/export operations at United Techniks and assisting with eBay UK inventory."
+    else:
+        answer = retrieved[0]["chunk"]["text"] if retrieved else "I don't have that in my notes."
         
     chunks_display = ""
     for idx, r in enumerate(retrieved, 1):
