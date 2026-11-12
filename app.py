@@ -5,7 +5,7 @@ from rank_bm25 import BM25Okapi
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# --- 1. Knowledge Base Documents (Eman's Profile) ---
+# --- 1. Knowledge Base Documents (Eman's Profile - Clean & Separated) ---
 DOCUMENTS = {
     "bio.md": (
         "I am Eman, a Software Engineering undergraduate currently in my 7th semester, having completed 103 credit hours. "
@@ -29,13 +29,10 @@ DOCUMENTS = {
         "I have five months of professional experience handling import/export operations and international client/vendor communications at United Techniks. "
         "Additionally, I assist with e-commerce inventory listing management and competitor analysis for sports, boxing, and fitness equipment on eBay UK."
     ),
-    "faq.md": (
-        "Q: What is your name?\nA: My name is Eman.\n"
-        "Q: What semester are you in?\nA: I am currently in my 7th semester studying Software Engineering.\n"
-        "Q: What is your tech stack?\nA: I primarily use Python, PyTorch, TensorFlow, Flask, Streamlit, and Git for my development workflows.\n"
-        "Q: Are you an AI clone?\n"
-        "A: Yes, I am an AI digital clone of Eman, not the real person. I answer questions based only on my documented notes."
-    )
+    "faq_name.md": "My name is Eman, and I am an AI digital clone representing my background and profile.",
+    "faq_semester.md": "I am currently in my 7th semester studying Software Engineering, having completed 103 credit hours.",
+    "faq_tech.md": "My technical stack includes Python, PyTorch, TensorFlow, Flask, Streamlit, Git, C++, and Hugging Face.",
+    "faq_clone.md": "Yes, I am an AI digital clone of Eman, not the real person. I answer questions based only on my documented notes."
 }
 
 # --- 2. Chunking & Indexing Setup ---
@@ -44,15 +41,22 @@ def chunk_documents(docs, chunk_size=150, overlap=30):
     chunk_id = 0
     for filename, text in docs.items():
         words = text.split()
-        for i in range(0, len(words), chunk_size - overlap):
-            chunk_words = words[i:i + chunk_size]
-            chunk_text = " ".join(chunk_words)
+        if len(words) <= chunk_size:
             chunks.append({
-                "id": f"{filename}_chunk_{chunk_id}",
+                "id": f"{filename}_chunk_0",
                 "source": filename,
-                "text": chunk_text
+                "text": text
             })
-            chunk_id += 1
+        else:
+            for i in range(0, len(words), chunk_size - overlap):
+                chunk_words = words[i:i + chunk_size]
+                chunk_text = " ".join(chunk_words)
+                chunks.append({
+                    "id": f"{filename}_chunk_{chunk_id}",
+                    "source": filename,
+                    "text": chunk_text
+                })
+                chunk_id += 1
     return chunks
 
 CHUNKS = chunk_documents(DOCUMENTS)
@@ -96,6 +100,9 @@ def retrieve_hybrid(query, top_k=3):
 
 # --- 4. Smart Generation Logic ---
 def generate_response(query, mode):
+    if not query.strip():
+        return "Please enter a question.", "No sources retrieved."
+
     if mode == "BM25 only":
         retrieved = retrieve_bm25(query, top_k=3)
     elif mode == "Dense only":
@@ -106,19 +113,20 @@ def generate_response(query, mode):
     q_lower = query.lower()
     top_text = retrieved[0]["chunk"]["text"] if retrieved else ""
     
+    # Intent mapping with typo tolerance
     if any(k in q_lower for k in ["name", "who are you", "who r u", "yourself"]):
         answer = "Hi! My name is Eman, and I am an AI digital clone representing my background and profile."
-    elif any(k in q_lower for k in ["semester", "study", "degree", "credit hours", "university"]):
+    elif any(k in q_lower for k in ["semester", "smst", "smester", "study", "degree", "credit hours", "university"]):
         answer = "I am currently in my 7th semester pursuing a Bachelor of Science in Software Engineering, having completed 103 credit hours."
-    elif any(k in q_lower for k in ["tech stack", "skills", "programming", "languages", "tools"]):
+    elif any(k in q_lower for k in ["tech stack", "skills", "programming", "languages", "tools", "stack"]):
         answer = "My technical stack includes Python, C++, Flask, Streamlit, PyTorch, TensorFlow, Keras, SQLite, Git, GitHub, and Hugging Face."
     elif any(k in q_lower for k in ["project", "fyp", "final year", "deepfake", "nlp", "blockchain"]):
         answer = "My Final Year Project is titled 'Smart Multimodal Recognition System for the Visually Impaired'. I have also worked on deepfake detection (MesoNet, EfficientNet-B4), toxic comment classification using BERT, and a blockchain voting system."
     elif any(k in q_lower for k in ["experience", "work", "job", "internship", "united techniks", "ebay"]):
         answer = "I have professional experience handling import/export operations and client communications at United Techniks, as well as assisting with e-commerce inventory management on eBay UK."
     else:
-        if len(retrieved) > 0 and retrieved[0]["score"] > 0.0:
-            answer = f"Based on my notes ({retrieved[0]['chunk']['source']}): {top_text}"
+        if len(retrieved) > 0:
+            answer = top_text
         else:
             answer = "I don't have that in my notes."
             
