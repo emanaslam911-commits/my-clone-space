@@ -2,7 +2,7 @@ import os
 import numpy as np
 import gradio as gr
 from rank_bm25 import BM25Okapi
-from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 # --- 1. Knowledge Base Documents (Eman's Profile) ---
@@ -62,40 +62,22 @@ chunk_texts = [c["text"] for c in CHUNKS]
 tokenized_corpus = [text.lower().split() for text in chunk_texts]
 bm25 = BM25Okapi(tokenized_corpus)
 
-# Dense Embedding Setup (MiniLM)
-model = SentenceTransformer("all-MiniLM-L6-v2")
-if os.path.exists("embeddings.npy"):
-    chunk_embeddings = np.load("embeddings.npy")
-else:
-    chunk_embeddings = model.encode(chunk_texts, show_progress_bar=False)
-    np.save("embeddings.npy", chunk_embeddings)
+# Vectorizer Setup
+vectorizer = TfidfVectorizer()
+chunk_embeddings = vectorizer.fit_transform(chunk_texts).toarray()
 
 # --- 3. Retrieval Functions ---
 def retrieve_bm25(query, top_k=3):
     tokenized_query = query.lower().split()
     scores = bm25.get_scores(tokenized_query)
     top_indices = np.argsort(scores)[::-1][:top_k]
-    results = []
-    for idx in top_indices:
-        results.append({
-            "chunk": CHUNKS[idx],
-            "score": float(scores[idx]),
-            "id": CHUNKS[idx]["id"]
-        })
-    return results
+    return [{"chunk": CHUNKS[i], "score": float(scores[i]), "id": CHUNKS[i]["id"]} for i in top_indices]
 
 def retrieve_dense(query, top_k=3):
-    query_embedding = model.encode([query])
-    scores = cosine_similarity(query_embedding, chunk_embeddings)[0]
+    query_vec = vectorizer.transform([query]).toarray()
+    scores = cosine_similarity(query_vec, chunk_embeddings)[0]
     top_indices = np.argsort(scores)[::-1][:top_k]
-    results = []
-    for idx in top_indices:
-        results.append({
-            "chunk": CHUNKS[idx],
-            "score": float(scores[idx]),
-            "id": CHUNKS[idx]["id"]
-        })
-    return results
+    return [{"chunk": CHUNKS[i], "score": float(scores[i]), "id": CHUNKS[i]["id"]} for i in top_indices]
 
 def retrieve_hybrid(query, top_k=3):
     bm25_res = retrieve_bm25(query, top_k=len(CHUNKS))
@@ -103,26 +85,14 @@ def retrieve_hybrid(query, top_k=3):
     
     rrf_scores = {}
     k_param = 60
-    
     for rank, item in enumerate(bm25_res):
-        cid = item["id"]
-        rrf_scores[cid] = rrf_scores.get(cid, 0) + 1.0 / (k_param + rank + 1)
-        
+        rrf_scores[item["id"]] = rrf_scores.get(item["id"], 0) + 1.0 / (k_param + rank + 1)
     for rank, item in enumerate(dense_res):
-        cid = item["id"]
-        rrf_scores[cid] = rrf_scores.get(cid, 0) + 1.0 / (k_param + rank + 1)
+        rrf_scores[item["id"]] = rrf_scores.get(item["id"], 0) + 1.0 / (k_param + rank + 1)
         
     sorted_chunks = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
-    
     chunk_map = {c["id"]: c for c in CHUNKS}
-    results = []
-    for cid, score in sorted_chunks:
-        results.append({
-            "chunk": chunk_map[cid],
-            "score": float(score),
-            "id": cid
-        })
-    return results
+    return [{"chunk": chunk_map[cid], "score": float(score), "id": cid} for cid, score in sorted_chunks]
 
 # --- 4. Smart Generation Logic ---
 def generate_response(query, mode):
@@ -136,7 +106,6 @@ def generate_response(query, mode):
     q_lower = query.lower()
     top_text = retrieved[0]["chunk"]["text"] if retrieved else ""
     
-    # Smart Intent-based precise response mapping
     if any(k in q_lower for k in ["name", "who are you", "who r u", "yourself"]):
         answer = "Hi! My name is Eman, and I am an AI digital clone representing my background and profile."
     elif any(k in q_lower for k in ["semester", "study", "degree", "credit hours", "university"]):
