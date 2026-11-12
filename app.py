@@ -136,7 +136,7 @@ def generate_response(query, mode):
     q_lower = query.lower()
     top_text = retrieved[0]["chunk"]["text"] if retrieved else ""
     
-    # Smart Intent-based precise response mapping from retrieved context
+    # Smart Intent-based precise response mapping
     if any(k in q_lower for k in ["name", "who are you", "who r u", "yourself"]):
         answer = "Hi! My name is Eman, and I am an AI digital clone representing my background and profile."
     elif any(k in q_lower for k in ["semester", "study", "degree", "credit hours", "university"]):
@@ -148,13 +148,11 @@ def generate_response(query, mode):
     elif any(k in q_lower for k in ["experience", "work", "job", "internship", "united techniks", "ebay"]):
         answer = "I have professional experience handling import/export operations and client communications at United Techniks, as well as assisting with e-commerce inventory management on eBay UK."
     else:
-        # Fallback to direct context snippet if no specific intent matches
         if len(retrieved) > 0 and retrieved[0]["score"] > 0.0:
             answer = f"Based on my notes ({retrieved[0]['chunk']['source']}): {top_text}"
         else:
             answer = "I don't have that in my notes."
             
-    # Format retrieved chunks display panel for assignment evaluation
     sources_text = ""
     for r in retrieved:
         sources_text += f"**Source:** {r['chunk']['source']} | **ID:** {r['id']} | **Score:** {r['score']:.4f}\n> {r['chunk']['text']}\n\n----\n"
